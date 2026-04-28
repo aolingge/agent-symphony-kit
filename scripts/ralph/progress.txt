@@ -1,0 +1,35 @@
+# Ralph Progress Log
+Started: 2026-04-29T01:33:29
+---
+
+## Codebase Patterns
+- Project is a small zero-runtime-dependency Node CLI; prefer `node:test` and local script checks over adding dependencies.
+- `scripts/ralph/` is currently ignored by `.gitignore`; force-add Ralph state files if a loop iteration must commit them.
+---
+
+## 2026-04-29T01:44:36 - runner-warning
+- Codex iteration 1 exited with code -1.
+- The loop will continue unless max iterations is reached.
+---
+
+## 2026-04-29T01:50:55+08:00 - US-001
+- What was implemented
+  - Added `docs/v0.1.1-readiness-audit.md` with read scope, P0/P1/P2 findings, smallest safe v0.1.1 fix set, and deferred high-risk/platform scope.
+  - Marked US-001 as passing after verification and focused self-review.
+- Files changed
+  - `docs/v0.1.1-readiness-audit.md`
+  - `scripts/ralph/prd.json`
+  - `scripts/ralph/progress.txt`
+- Verification run
+  - `npm run typecheck` passed: `syntax ok (10 files)`.
+- Self-review result and remaining P2/P3 risks, if any
+  - Reviewed the audit document against US-001 acceptance criteria. No P0/P1 issues found in the US-001 changes.
+  - Residual risk: the repository has broad pre-existing dirty changes across CLI, packaging, docs, tests, and CI. They were documented as audit findings and intentionally not included in this story's implementation.
+- Learnings for future iterations:
+  - Pattern discovered
+    - Keep release readiness split by story: audit first, then data contract, CLI coverage, packaging checks, docs, and final verification.
+  - Gotcha encountered
+    - The working tree was already dirty and continued to expose additional uncommitted files while this iteration ran; stage only the current story files.
+- Useful context for the next iteration
+    - `npm run typecheck` currently passes, but `npm run pack:dry` may reject untracked packed files until the packaging/doc/test changes are tracked by their owning stories.
+---

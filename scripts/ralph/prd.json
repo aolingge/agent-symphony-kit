@@ -1,0 +1,120 @@
+{
+  "project": "Agent Symphony Kit",
+  "branchName": "ralph/v0-1-1-quality-readiness",
+  "description": "Audit and safely improve CLI, data contract, security posture, tests, docs, and release readiness for v0.1.1 without publishing or touching credentials.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Audit v0.1.1 readiness baseline",
+      "description": "As a maintainer, I want a focused audit of the CLI, data contract, security boundaries, packaging, and docs so that v0.1.1 work starts from verified facts instead of assumptions.",
+      "acceptanceCriteria": [
+        "Read AGENTS.md, README.md, README.zh-CN.md, CONTRIBUTING.md, SECURITY.md, CHANGELOG.md, docs, examples, package.json, scripts, src, and test before changing application code",
+        "Create or update a concise local audit artifact or progress entry listing P0, P1, and P2 findings for CLI, data contract, security, packaging, and docs",
+        "Identify the smallest safe fix set for v0.1.1 and defer platform-sized work such as daemon mode, issue tracker sync, TUI, or cloud dashboards",
+        "Do not publish, push, delete, transfer repositories, persist credentials, or write secrets",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Reuse decision: local docs show the project is intentionally local-first, zero-runtime-dependency, and not a full Symphony implementation. Local Obsidian/release notes confirm v0.1.0 was already published and validated. OpenAI Symphony and its SPEC are useful prior art for workflow concepts, but the smallest safe scope here is to keep this package file-native and CLI-focused rather than importing or reimplementing Symphony."
+    },
+    {
+      "id": "US-002",
+      "title": "Harden task data contract",
+      "description": "As a CLI user, I want task files and JSONL events to be validated and read predictably so that bad input or partial files do not silently corrupt workflow state.",
+      "acceptanceCriteria": [
+        "Define the current task contract in code or tests, including schemaVersion, id, title, state, priority, timestamps, verification, artifacts, followups, and blockedBy",
+        "Reject or normalize invalid task states and priorities with clear CLI errors",
+        "Preserve future-compatible unknown JSONL events while returning readable diagnostics for malformed event lines",
+        "Add node:test coverage for valid tasks, invalid states, invalid priorities, ambiguous id prefixes, and malformed events",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "Reuse decision: docs/architecture.md already defines states and future-compatible unknown events, so implement thin validation around the existing file contract instead of adding a schema dependency. Keep runtime dependencies at zero."
+    },
+    {
+      "id": "US-003",
+      "title": "Tighten CLI behavior coverage",
+      "description": "As a developer, I want CLI commands and argument parsing to be covered by smoke tests so that bin aliases and error paths stay stable across platforms.",
+      "acceptanceCriteria": [
+        "Add or update node:test coverage for init, task create/list/show/log/set, preflight, gate dry-run, report/status aliases, run, help, unknown commands, and required-argument failures",
+        "Verify JSON output paths parse as JSON for commands that support --json",
+        "Verify the three bin entry names agent-symphony-kit, agent-symphony, and askit through package metadata or a safe smoke path",
+        "Keep command behavior cross-platform and avoid hard-coded absolute paths",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "Reuse decision: existing CLI is a small custom parser with no runtime dependencies. Reuse node:test and process.execPath smoke commands rather than adding yargs, commander, zx, shelljs, or platform-specific wrappers."
+    },
+    {
+      "id": "US-004",
+      "title": "Improve gate report safety",
+      "description": "As a maintainer, I want gate reports to reduce accidental secret exposure while still preserving enough evidence for local verification.",
+      "acceptanceCriteria": [
+        "Audit runCommand, runGate, renderGateMarkdown, and JSON report output for command, cwd, stdout, stderr, error, timeout, and maxBuffer behavior",
+        "Implement the highest-value safe redaction or warning behavior for obvious secret-like output without storing token values in tests, docs, PRD, progress logs, or reports",
+        "Document that user-provided gate commands are executed locally and should be reviewed before running",
+        "Add node:test coverage for redaction or warning behavior using synthetic placeholder values only",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "Reuse decision: README already documents optional external scanners such as agent-secret-guard and agent-reliability-kit as gate commands. Do not add them as dependencies for v0.1.1; keep them optional and improve built-in safety with small local helpers and tests."
+    },
+    {
+      "id": "US-005",
+      "title": "Strengthen package smoke checks",
+      "description": "As a package maintainer, I want dry-run packaging and clean-install smoke paths to catch missing files or unsafe package contents before any manual release.",
+      "acceptanceCriteria": [
+        "Review package.json files list, scripts/pack-dry-run.mjs, .gitignore, and existing package-lock.json behavior for v0.1.1 readiness",
+        "Update npm pack dry-run checks to verify required published files and reject forbidden local state, temp folders, archives, private logs, and secret-like paths",
+        "Add a safe smoke test or script path that exercises the packed package or package metadata without publishing",
+        "Do not run npm publish, git push, release creation, real-account posting, DNS changes, deletion, or credential persistence",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "Reuse decision: npm official docs confirm npm pack supports dry-run and JSON output, which matches the existing scripts/pack-dry-run.mjs approach. Reuse that path instead of adding a release framework or publish automation."
+    },
+    {
+      "id": "US-006",
+      "title": "Refresh v0.1.1 docs and backlog",
+      "description": "As a user evaluating the project, I want docs and release notes to clearly explain v0.1.1 behavior, safety boundaries, verification commands, and remaining roadmap so that adoption risk is understandable.",
+      "acceptanceCriteria": [
+        "Update CHANGELOG.md with an unreleased or v0.1.1 section describing only verified changes",
+        "Update README.md, README.zh-CN.md, docs/architecture.md, docs/roadmap.md, or SECURITY.md only where behavior or safety wording changed",
+        "Record a P0, P1, and P2 follow-up backlog from the audit and verification results",
+        "Keep public launch, npm publish, GitHub release, X, Hacker News, LinkedIn, Reddit, and Product Hunt actions out of automated docs or scripts unless explicit maintainer intent is provided later",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "Reuse decision: local launch-kit and promotion notes already define positioning and channels. For v0.1.1, reuse those materials only as reference; the safe deliverable is docs/release-note readiness, not public posting or publishing."
+    },
+    {
+      "id": "US-007",
+      "title": "Run final review and verification",
+      "description": "As a maintainer, I want the accumulated v0.1.1 changes reviewed and verified so that only safe, tested fixes remain before any manual release decision.",
+      "acceptanceCriteria": [
+        "Inspect the accumulated diff or changed files and confirm each completed story's acceptance criteria",
+        "Fix any discovered P0 or P1 regression before marking this story complete",
+        "Run npm run check successfully",
+        "Run npm run pack:dry successfully",
+        "Document exact verification commands, outcomes, skipped checks, and remaining risks in the Ralph progress log or an audit artifact",
+        "Confirm no secrets, tokens, cookies, passwords, connection strings, private logs, browser profiles, or local-only credential paths were added",
+        "If credentials are ever needed for later optional checks, reuse existing logged-in browser sessions, OpenCLI, tool-native credential stores, Cockpit Tools, or the local encrypted AI secret vault instead of asking repeatedly or writing them to repository files",
+        "Tests pass",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "Reuse decision: final verification should use the repository's existing npm run check and npm run pack:dry commands from AGENTS.md, README.md, and CONTRIBUTING.md. Do not add publish, push, delete, or credential-touching steps."
+    }
+  ]
+}
