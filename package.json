@@ -1,0 +1,67 @@
+{
+  "name": "agent-symphony-kit",
+  "version": "0.1.0",
+  "description": "Local-first task orchestration and verification contracts for coding agents.",
+  "type": "module",
+  "bin": {
+    "agent-symphony-kit": "./src/cli.js",
+    "agent-symphony": "./src/cli.js",
+    "askit": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "node scripts/check-syntax.mjs",
+    "typecheck": "node scripts/check-syntax.mjs",
+    "check": "npm run lint && npm run typecheck && npm test && npm run smoke",
+    "smoke": "node src/cli.js init --path .tmp/smoke --force && node src/cli.js task create --path .tmp/smoke --title \"Smoke task\" --json && node src/cli.js preflight --path .tmp/smoke && node src/cli.js gate --path .tmp/smoke --check \"node -e \\\"console.log('ok')\\\"\"",
+    "pack:dry": "node scripts/pack-dry-run.mjs"
+  },
+  "files": [
+    "src",
+    "docs",
+    "examples",
+    "scripts",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "keywords": [
+    "ai-agent",
+    "coding-agent",
+    "agentic-coding",
+    "codex",
+    "claude-code",
+    "symphony",
+    "orchestration",
+    "workflow",
+    "workflow-md",
+    "task-runner",
+    "local-first",
+    "worktree",
+    "automation",
+    "task-tracker",
+    "jsonl",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "Aolinge",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aolingge/agent-symphony-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aolingge/agent-symphony-kit/issues"
+  },
+  "homepage": "https://github.com/aolingge/agent-symphony-kit",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+.tmp/
+.agent-symphony/runs/
+.agent-symphony/tmp/
+npm-debug.log*
+*.tgz
+
