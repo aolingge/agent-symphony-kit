@@ -33,3 +33,30 @@ Started: 2026-04-29T01:33:29
 - Useful context for the next iteration
     - `npm run typecheck` currently passes, but `npm run pack:dry` may reject untracked packed files until the packaging/doc/test changes are tracked by their owning stories.
 ---
+
+## 2026-04-29T02:06:50+08:00 - US-002
+- What was implemented
+  - Added task state and priority validation using the existing template constants, plus clear errors for invalid create/list/set inputs.
+  - Hardened task reads with schema, id, title, timestamp, array-field, state, and priority validation.
+  - Switched stored/listed `taskDir` values to repo-relative paths and added unique task id generation to avoid rapid-create overwrites.
+  - Added `node:test` coverage for the task contract fields, invalid states/priorities, ambiguous id prefixes, unreadable task files, unknown future events, and malformed JSONL lines.
+- Files changed
+  - `src/core.js`
+  - `src/templates.js`
+  - `test/core.test.js`
+  - `scripts/ralph/prd.json`
+  - `scripts/ralph/progress.txt`
+- Verification run
+  - `npm test` passed: 10 tests, 10 pass.
+  - `npm run typecheck` passed: `syntax ok (6 files)`.
+- Self-review result and remaining P2/P3 risks, if any
+  - Compared the diff against US-002 acceptance criteria. No P0/P1 issues found.
+  - P2 risk: task JSON validation is intentionally lightweight and dependency-free; it does not enforce deep element schemas for arrays such as `artifacts`, `verification`, `followups`, or `blockedBy`.
+- Learnings for future iterations:
+  - Pattern discovered
+    - Keep data-contract hardening in `src/core.js` and cover behavior with `node:test`; avoid adding schema dependencies for this package.
+  - Gotcha encountered
+    - Another local Git process changed branches and removed the Ralph branch during the iteration; restore Ralph state from reflog before continuing if this recurs.
+  - Useful context for the next iteration
+    - US-003 can build on the clearer core errors, but should add CLI smoke coverage without changing the data contract again unless a CLI test exposes a regression.
+---

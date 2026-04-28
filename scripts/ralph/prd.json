@@ -31,7 +31,7 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
+      "passes": true,
       "notes": "Reuse decision: docs/architecture.md already defines states and future-compatible unknown events, so implement thin validation around the existing file contract instead of adding a schema dependency. Keep runtime dependencies at zero."
     },
     {

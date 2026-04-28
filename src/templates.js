@@ -62,3 +62,4 @@ export const DEFAULT_TASK_STATES = [
   "Abandoned"
 ];
 
+export const DEFAULT_TASK_PRIORITIES = ["P0", "P1", "P2", "P3"];

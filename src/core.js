@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { DEFAULT_GITIGNORE, DEFAULT_TASK_STATES, DEFAULT_WORKFLOW } from "./templates.js";
+import { DEFAULT_GITIGNORE, DEFAULT_TASK_PRIORITIES, DEFAULT_TASK_STATES, DEFAULT_WORKFLOW } from "./templates.js";
 
 export const STATE_DIR = ".agent-symphony";
 
@@ -49,6 +49,31 @@ export function workflowPath(projectPath) {
   return join(resolve(projectPath), "WORKFLOW.md");
 }
 
+export function relativeTaskDir(id) {
+  return `${STATE_DIR}/tasks/${id}`;
+}
+
+export function validateState(state, field = "state") {
+  if (!DEFAULT_TASK_STATES.includes(state)) {
+    throw new Error(`Invalid ${field}: ${state}. Allowed values: ${DEFAULT_TASK_STATES.join(", ")}`);
+  }
+  return state;
+}
+
+export function validatePriority(priority) {
+  if (!DEFAULT_TASK_PRIORITIES.includes(priority)) {
+    throw new Error(`Invalid priority: ${priority}. Allowed values: ${DEFAULT_TASK_PRIORITIES.join(", ")}`);
+  }
+  return priority;
+}
+
+export function assertInitialized(projectPath) {
+  const root = resolve(projectPath);
+  if (!existsSync(workflowPath(root)) || !existsSync(taskRoot(root)) || !existsSync(runsRoot(root))) {
+    throw new Error(`Project is not initialized: ${root}. Run "askit init --path ${root}" first.`);
+  }
+}
+
 export function initProject(projectPath, { force = false } = {}) {
   const root = resolve(projectPath);
   ensureDir(root);
@@ -73,10 +98,14 @@ export function initProject(projectPath, { force = false } = {}) {
 
 export function createTask(projectPath, input) {
   const root = resolve(projectPath);
-  ensureDir(taskRoot(root));
+  assertInitialized(root);
+  if (!String(input.title || "").trim()) {
+    throw new Error("Task title is required");
+  }
+  validateState(input.state || "Ready");
+  validatePriority(input.priority || "P2");
   const timestamp = new Date();
-  const stamp = timestamp.toISOString().replace(/[-:TZ.]/g, "").slice(0, 14);
-  const id = `${stamp}-${slugify(input.title)}`;
+  const id = createUniqueId(root, slugify(input.title));
   const dir = join(taskRoot(root), id);
   ensureDir(dir);
 
@@ -88,10 +117,10 @@ export function createTask(projectPath, input) {
     repo: input.repo || "",
     state: input.state || "Ready",
     priority: input.priority || "P2",
-    blockedBy: input.blockedBy || [],
+    blockedBy: normalizeArray(input.blockedBy),
     createdAt: timestamp.toISOString(),
     updatedAt: timestamp.toISOString(),
-    taskDir: dir,
+    taskDir: relativeTaskDir(id),
     artifacts: [],
     verification: [],
     followups: []
@@ -155,11 +184,13 @@ export function setTaskState(projectPath, idPrefix, update) {
   const dir = findTaskDir(projectPath, idPrefix);
   const jsonPath = join(dir, "task.json");
   const task = readJson(jsonPath);
+  validateTask(task);
+  validateState(update.state);
   const previousState = task.state;
   task.state = update.state;
   task.updatedAt = nowIso();
-  task.verification = [...(task.verification || []), ...(update.verification || [])];
-  task.artifacts = [...(task.artifacts || []), ...(update.artifacts || [])];
+  task.verification = [...(task.verification || []), ...normalizeArray(update.verification)];
+  task.artifacts = [...(task.artifacts || []), ...normalizeArray(update.artifacts)];
   writeJson(jsonPath, task);
   appendJsonl(join(dir, "events.jsonl"), {
     timestamp: task.updatedAt,
@@ -167,15 +198,17 @@ export function setTaskState(projectPath, idPrefix, update) {
     previousState,
     state: task.state,
     note: update.note || "",
-    verification: update.verification || [],
-    artifacts: update.artifacts || []
+    verification: normalizeArray(update.verification),
+    artifacts: normalizeArray(update.artifacts)
   });
   return task;
 }
 
 export function readTask(projectPath, idPrefix) {
   const dir = findTaskDir(projectPath, idPrefix);
-  return readJson(join(dir, "task.json"));
+  const task = readJson(join(dir, "task.json"));
+  validateTask(task);
+  return task;
 }
 
 export function readTaskEvents(projectPath, idPrefix) {
@@ -197,6 +230,9 @@ export function readTaskEvents(projectPath, idPrefix) {
 }
 
 export function listTasks(projectPath, { state = "All", staleMinutes = 20 } = {}) {
+  if (state !== "All") {
+    validateState(state, "state filter");
+  }
   const root = taskRoot(projectPath);
   if (!existsSync(root)) {
     return [];
@@ -206,36 +242,37 @@ export function listTasks(projectPath, { state = "All", staleMinutes = 20 } = {}
     .filter((entry) => entry.isDirectory())
     .map((entry) => {
       const dir = join(root, entry.name);
-      const file = join(dir, "task.json");
-      try {
-        const task = readJson(file);
-        const updatedMs = Date.parse(task.updatedAt);
-        const minutesSinceUpdate = Number.isFinite(updatedMs) ? Math.round(((now - updatedMs) / 60000) * 10) / 10 : null;
-        const active = ["Running", "Review", "Verify"].includes(task.state);
+        const file = join(dir, "task.json");
+        try {
+          const task = readJson(file);
+          validateTask(task);
+          const updatedMs = Date.parse(task.updatedAt);
+          const minutesSinceUpdate = Number.isFinite(updatedMs) ? Math.round(((now - updatedMs) / 60000) * 10) / 10 : null;
+          const active = ["Running", "Review", "Verify"].includes(task.state);
         return {
           id: task.id,
           state: task.state,
           priority: task.priority,
           repo: task.repo,
           title: task.title,
-          updatedAt: task.updatedAt,
-          minutesSinceUpdate,
-          stale: Boolean(active && minutesSinceUpdate !== null && minutesSinceUpdate >= staleMinutes),
-          taskDir: dir
-        };
-      } catch (error) {
-        return {
+            updatedAt: task.updatedAt,
+            minutesSinceUpdate,
+            stale: Boolean(active && minutesSinceUpdate !== null && minutesSinceUpdate >= staleMinutes),
+            taskDir: relativeTaskDir(task.id)
+          };
+        } catch (error) {
+          return {
           id: entry.name,
           state: "Unreadable",
           priority: "",
           repo: "",
-          title: error.message,
-          updatedAt: "",
-          minutesSinceUpdate: null,
-          stale: true,
-          taskDir: dir
-        };
-      }
+            title: error.message,
+            updatedAt: "",
+            minutesSinceUpdate: null,
+            stale: true,
+            taskDir: relativeTaskDir(entry.name)
+          };
+        }
     })
     .filter((task) => state === "All" || task.state === state)
     .sort((a, b) => Number(b.stale) - Number(a.stale) || String(a.priority).localeCompare(String(b.priority)) || String(a.updatedAt).localeCompare(String(b.updatedAt)));
@@ -403,5 +440,61 @@ export function resetForTests(path) {
       throw new Error(`Refusing to remove non-temp path: ${resolved}`);
     }
     rmSync(resolved, { recursive: true, force: true });
+  }
+}
+
+export function createUniqueId(projectPath, slug) {
+  const stamp = new Date().toISOString().replace(/[-:TZ.]/g, "").slice(0, 17);
+  const base = `${stamp}-${slug}`;
+  let candidate = base;
+  let suffix = 2;
+  while (existsSync(join(taskRoot(projectPath), candidate))) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
+}
+
+export function validateTask(task) {
+  if (task?.schemaVersion !== 1) {
+    throw new Error(`Unsupported task schemaVersion: ${task?.schemaVersion ?? "missing"}`);
+  }
+  if (!isNonEmptyString(task.id)) {
+    throw new Error("Task is missing id");
+  }
+  if (!isNonEmptyString(task.title)) {
+    throw new Error(`Task ${task.id} is missing title`);
+  }
+  requireIsoTimestamp(task, "createdAt");
+  requireIsoTimestamp(task, "updatedAt");
+  requireArrayField(task, "verification");
+  requireArrayField(task, "artifacts");
+  requireArrayField(task, "followups");
+  requireArrayField(task, "blockedBy");
+  validateState(task.state);
+  task.priority = validatePriority(task.priority || "P2");
+  return task;
+}
+
+export function normalizeArray(value) {
+  if (value === undefined || value === null) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function requireIsoTimestamp(task, field) {
+  if (typeof task[field] !== "string" || Number.isNaN(Date.parse(task[field]))) {
+    throw new Error(`Task ${task.id} has invalid ${field}: expected ISO timestamp`);
+  }
+}
+
+function requireArrayField(task, field) {
+  if (!Array.isArray(task[field])) {
+    throw new Error(`Task ${task.id} has invalid ${field}: expected array`);
   }
 }
